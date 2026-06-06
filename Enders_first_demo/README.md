@@ -23,11 +23,15 @@ Open `http://localhost:3000/feed`.
 ## Project Structure
 
 - `src/components/feed`: 2D Swiper feed, cluster slides, Vidstack video cards.
+- `src/features`: future product modules for recommendation, creator, social, search, and auth work.
 - `src/lib/feed`: Zod schemas, generated graph data, fetchers, Query options, Zustand store.
+- `src/server`: future backend-only database, services, and jobs.
 - `src/mocks`: MSW handlers and browser worker setup.
 - `src/app/api/feed`: mock-compatible Next.js route handlers.
 - `src/lib/analytics`: PostHog-backed analytics abstraction.
 - `docs/research.md`: GitHub research and library selection rationale.
+- `docs/architecture.md`: architecture map for scaling the demo.
+- `docs/hackathon-plan.md`: two-day build priorities and guardrails.
 
 ## Database
 

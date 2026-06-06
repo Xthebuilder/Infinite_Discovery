@@ -2,6 +2,7 @@
 
 import { MediaOutlet, MediaPlayer, MediaPoster } from "@vidstack/react";
 import { Heart, MessageCircle, Send, Volume2 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useInView } from "react-intersection-observer";
 
@@ -15,6 +16,26 @@ type FeedVideoCardProps = {
   preload?: boolean;
 };
 
+function isYouTubeEmbed(url: string) {
+  return url.includes("youtube.com/embed/");
+}
+
+function YouTubePlayer({ url, active }: { url: string; active: boolean }) {
+  const src = active
+    ? `${url}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${url.split("/").pop()}`
+    : url;
+
+  return (
+    <iframe
+      key={String(active)}
+      src={src}
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      allow="autoplay; encrypted-media"
+      allowFullScreen
+    />
+  );
+}
+
 export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
   const playerRef = useRef<HTMLElement | null>(null);
   const { ref: inViewRef, inView } = useInView({
@@ -22,28 +43,26 @@ export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
     rootMargin: "12% 0px",
   });
   const shouldPlay = active && inView;
+  const isYouTube = isYouTubeEmbed(item.videoUrl);
 
   useEffect(() => {
+    if (isYouTube) return;
     const player = playerRef.current as (HTMLElement & {
       play?: () => Promise<void>;
       pause?: () => void;
     }) | null;
 
-    if (!player) {
-      return;
-    }
+    if (!player) return;
 
     if (shouldPlay) {
       void player.play?.()?.catch(() => undefined);
     } else {
       player.pause?.();
     }
-  }, [shouldPlay, item.id]);
+  }, [shouldPlay, item.id, isYouTube]);
 
   useEffect(() => {
-    if (!preload) {
-      return;
-    }
+    if (!preload || isYouTube) return;
 
     const link = document.createElement("link");
     link.rel = "preload";
@@ -51,10 +70,8 @@ export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
     link.href = item.videoUrl;
     document.head.appendChild(link);
 
-    return () => {
-      link.remove();
-    };
-  }, [item.videoUrl, preload]);
+    return () => { link.remove(); };
+  }, [item.videoUrl, preload, isYouTube]);
 
   const formatter = useMemo(
     () =>
@@ -67,6 +84,18 @@ export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
 
   return (
     <article ref={inViewRef} className="relative h-dvh w-full overflow-hidden bg-black">
+      {isYouTube ? (
+        <>
+          <Image
+            src={item.posterUrl}
+            alt=""
+            fill
+            className="object-cover"
+            priority={active}
+          />
+          {inView && <YouTubePlayer url={item.videoUrl} active={shouldPlay} />}
+        </>
+      ) : (
       <MediaPlayer
         ref={playerRef}
         src={item.videoUrl}
@@ -84,6 +113,7 @@ export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
           />
         </MediaOutlet>
       </MediaPlayer>
+      )}
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/88 via-black/32 to-transparent" />
 

@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Cluster {
+  id    String        @id
+  title String
+  score Float
+  items ClusterItem[]
+
+  @@map("clusters")
+}
+
+model ClusterItem {
+  id          String  @id
+  clusterId   String  @map("cluster_id")
+  title       String
+  videoUrl    String  @map("video_url")
+  creatorName String  @map("creator_name")
+  description String
+  posterUrl   String  @map("poster_url")
+  score       Float
+  likes       Int     @default(0)
+  comments    Int     @default(0)
+  shares      Int     @default(0)
+
+  cluster Cluster @relation(fields: [clusterId], references: [id])
+
+  @@index([clusterId, score(sort: Desc)])
+  @@map("cluster_items")
+}

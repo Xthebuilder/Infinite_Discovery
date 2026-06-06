@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import { A11y, Keyboard, Mousewheel, Virtual } from "swiper/modules";
+import { A11y, Virtual } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 
@@ -12,14 +12,17 @@ import { FeedVideoCard } from "@/components/feed/feed-video-card";
 import { Button } from "@/components/ui/button";
 import { clusterItemsQuery } from "@/lib/feed/queries";
 import type { Cluster } from "@/lib/feed/schema";
+import type { FeedScaleLevel } from "./two-dimensional-feed";
 
 type ClusterSlideProps = {
   cluster: Cluster;
   y: number;
   activeY: number;
   activeX: number;
+  scaleLevel: FeedScaleLevel;
   requestedItemId?: string | null;
   onItemChange: (x: number, itemId: string) => void;
+  onSwiperReady?: (swiper: SwiperInstance | null) => void;
 };
 
 export function ClusterSlide({
@@ -27,14 +30,17 @@ export function ClusterSlide({
   y,
   activeY,
   activeX,
+  scaleLevel,
   requestedItemId,
   onItemChange,
+  onSwiperReady,
 }: ClusterSlideProps) {
   const queryClient = useQueryClient();
   const swiperRef = useRef<SwiperInstance | null>(null);
   const virtualRef = useRef<HTMLDivElement | null>(null);
   const isActiveCluster = activeY === y;
-  const shouldLoadItems = Math.abs(activeY - y) <= 1;
+  const visibleRadius = scaleLevel.slidesPerView >= 5 ? 2 : 1;
+  const shouldLoadItems = Math.abs(activeY - y) <= visibleRadius;
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       ...clusterItemsQuery(cluster.id),
@@ -54,6 +60,18 @@ export function ClusterSlide({
   const virtualItems = itemVirtualizer.getVirtualItems();
 
   useEffect(() => {
+    if (!isActiveCluster) {
+      return;
+    }
+
+    onSwiperReady?.(swiperRef.current);
+
+    return () => {
+      onSwiperReady?.(null);
+    };
+  }, [isActiveCluster, onSwiperReady]);
+
+  useEffect(() => {
     if (!isActiveCluster || !requestedItemId || !items.length) {
       return;
     }
@@ -64,6 +82,29 @@ export function ClusterSlide({
       swiperRef.current?.slideTo(requestedIndex, 0);
     }
   }, [isActiveCluster, items, requestedItemId]);
+
+  useEffect(() => {
+    if (!isActiveCluster || !items.length) {
+      return;
+    }
+
+    const boundedX = Math.min(activeX, items.length - 1);
+
+    if (boundedX >= 0 && boundedX !== swiperRef.current?.activeIndex) {
+      swiperRef.current?.slideTo(boundedX, 0);
+    }
+  }, [activeX, isActiveCluster, items.length]);
+
+  useEffect(() => {
+    swiperRef.current?.update();
+
+    if (!isActiveCluster || !items.length) {
+      return;
+    }
+
+    const boundedX = Math.min(activeX, items.length - 1);
+    swiperRef.current?.slideTo(boundedX, 0);
+  }, [activeX, isActiveCluster, items.length, scaleLevel.slidesPerView]);
 
   useEffect(() => {
     if (!isActiveCluster || !items[activeX]) {
@@ -93,7 +134,7 @@ export function ClusterSlide({
   ]);
 
   return (
-    <section className="relative h-dvh w-full bg-black" aria-label={cluster.title}>
+    <section className="relative h-full w-full bg-black" aria-label={cluster.title}>
       <div ref={virtualRef} className="sr-only" aria-hidden="true">
         {virtualItems.length} virtual item slots prepared
       </div>
@@ -104,23 +145,26 @@ export function ClusterSlide({
         </div>
       ) : (
         <Swiper
-          modules={[A11y, Keyboard, Mousewheel, Virtual]}
+          modules={[A11y, Virtual]}
           className="horizontal-feed-swiper h-full w-full"
           direction="horizontal"
           nested
           virtual
           allowTouchMove
-          keyboard={{ enabled: isActiveCluster }}
-          mousewheel={{ forceToAxis: true }}
           resistanceRatio={0.72}
           threshold={6}
           touchAngle={35}
           touchStartPreventDefault={false}
           passiveListeners={false}
-          slidesPerView={1}
+          slidesPerView={scaleLevel.slidesPerView}
+          centeredSlides
+          centeredSlidesBounds={false}
           initialSlide={activeX}
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
+            if (isActiveCluster) {
+              onSwiperReady?.(swiper);
+            }
           }}
           onSlideChange={(swiper) => {
             const item = items[swiper.activeIndex];
@@ -140,6 +184,7 @@ export function ClusterSlide({
                 item={item}
                 active={isActiveCluster && activeX === x}
                 preload={isActiveCluster && (activeX === x + 1 || activeX + 1 === x)}
+                compact={scaleLevel.slidesPerView >= 3}
               />
             </SwiperSlide>
           ))}

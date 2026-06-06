@@ -2,7 +2,6 @@
 
 import { MediaOutlet, MediaPlayer, MediaPoster } from "@vidstack/react";
 import { Heart, MessageCircle, Send, Volume2 } from "lucide-react";
-import Image from "next/image";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useInView } from "react-intersection-observer";
 
@@ -14,55 +13,43 @@ type FeedVideoCardProps = {
   item: FeedItem;
   active: boolean;
   preload?: boolean;
+  compact?: boolean;
 };
 
-function isYouTubeEmbed(url: string) {
-  return url.includes("youtube.com/embed/");
-}
-
-function YouTubePlayer({ url, active }: { url: string; active: boolean }) {
-  const src = active
-    ? `${url}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${url.split("/").pop()}`
-    : url;
-
-  return (
-    <iframe
-      key={String(active)}
-      src={src}
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      allow="autoplay; encrypted-media"
-      allowFullScreen
-    />
-  );
-}
-
-export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
+export function FeedVideoCard({
+  item,
+  active,
+  preload,
+  compact = false,
+}: FeedVideoCardProps) {
   const playerRef = useRef<HTMLElement | null>(null);
   const { ref: inViewRef, inView } = useInView({
     threshold: 0.72,
     rootMargin: "12% 0px",
   });
   const shouldPlay = active && inView;
-  const isYouTube = isYouTubeEmbed(item.videoUrl);
 
   useEffect(() => {
-    if (isYouTube) return;
     const player = playerRef.current as (HTMLElement & {
       play?: () => Promise<void>;
       pause?: () => void;
     }) | null;
 
-    if (!player) return;
+    if (!player) {
+      return;
+    }
 
     if (shouldPlay) {
       void player.play?.()?.catch(() => undefined);
     } else {
       player.pause?.();
     }
-  }, [shouldPlay, item.id, isYouTube]);
+  }, [shouldPlay, item.id]);
 
   useEffect(() => {
-    if (!preload || isYouTube) return;
+    if (!preload) {
+      return;
+    }
 
     const link = document.createElement("link");
     link.rel = "preload";
@@ -70,8 +57,10 @@ export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
     link.href = item.videoUrl;
     document.head.appendChild(link);
 
-    return () => { link.remove(); };
-  }, [item.videoUrl, preload, isYouTube]);
+    return () => {
+      link.remove();
+    };
+  }, [item.videoUrl, preload]);
 
   const formatter = useMemo(
     () =>
@@ -83,19 +72,7 @@ export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
   );
 
   return (
-    <article ref={inViewRef} className="relative h-dvh w-full overflow-hidden bg-black">
-      {isYouTube ? (
-        <>
-          <Image
-            src={item.posterUrl}
-            alt=""
-            fill
-            className="object-cover"
-            priority={active}
-          />
-          {inView && <YouTubePlayer url={item.videoUrl} active={shouldPlay} />}
-        </>
-      ) : (
+    <article ref={inViewRef} className="relative h-full w-full overflow-hidden bg-black">
       <MediaPlayer
         ref={playerRef}
         src={item.videoUrl}
@@ -113,20 +90,55 @@ export function FeedVideoCard({ item, active, preload }: FeedVideoCardProps) {
           />
         </MediaOutlet>
       </MediaPlayer>
-      )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/88 via-black/32 to-transparent" />
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/88 via-black/32 to-transparent",
+          compact ? "h-1/2" : "h-2/5",
+        )}
+      />
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
-        <div className="min-w-0 max-w-[78%] space-y-2 text-white">
-          <p className="text-sm font-semibold">{item.creatorName}</p>
-          <h2 className="text-2xl font-semibold leading-tight">{item.title}</h2>
-          <p className="line-clamp-2 text-sm leading-5 text-white/82">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between text-white",
+          compact
+            ? "gap-2 p-2"
+            : "gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6",
+        )}
+      >
+        <div
+          className={cn(
+            "min-w-0 text-white",
+            compact ? "max-w-full space-y-1" : "max-w-[78%] space-y-2",
+          )}
+        >
+          <p className={cn("font-semibold", compact ? "text-[10px]" : "text-sm")}>
+            {item.creatorName}
+          </p>
+          <h2
+            className={cn(
+              "font-semibold leading-tight",
+              compact ? "line-clamp-2 text-xs" : "text-2xl",
+            )}
+          >
+            {item.title}
+          </h2>
+          <p
+            className={cn(
+              "line-clamp-2 leading-5 text-white/82",
+              compact ? "hidden" : "text-sm",
+            )}
+          >
             {item.description}
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center gap-3 text-white">
+        <div
+          className={cn(
+            "shrink-0 flex-col items-center text-white",
+            compact ? "hidden" : "flex gap-3",
+          )}
+        >
           <MetricButton
             icon={<Heart className="h-5 w-5" />}
             label={formatter.format(item.stats.likes)}

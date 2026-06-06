@@ -16,6 +16,27 @@ type FeedVideoCardProps = {
   compact?: boolean;
 };
 
+function isYouTubeEmbed(url: string) {
+  return url.includes("youtube.com/embed/");
+}
+
+function YouTubePlayer({ url, active }: { url: string; active: boolean }) {
+  const videoId = url.split("/embed/")[1]?.split("?")[0] ?? "";
+  const src = active
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${videoId}`
+    : `https://www.youtube.com/embed/${videoId}`;
+
+  return (
+    <iframe
+      key={String(active)}
+      src={src}
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      allow="autoplay; encrypted-media"
+      allowFullScreen
+    />
+  );
+}
+
 export function FeedVideoCard({
   item,
   active,
@@ -28,28 +49,26 @@ export function FeedVideoCard({
     rootMargin: "12% 0px",
   });
   const shouldPlay = active && inView;
+  const isYouTube = isYouTubeEmbed(item.videoUrl);
 
   useEffect(() => {
+    if (isYouTube) return;
     const player = playerRef.current as (HTMLElement & {
       play?: () => Promise<void>;
       pause?: () => void;
     }) | null;
 
-    if (!player) {
-      return;
-    }
+    if (!player) return;
 
     if (shouldPlay) {
       void player.play?.()?.catch(() => undefined);
     } else {
       player.pause?.();
     }
-  }, [shouldPlay, item.id]);
+  }, [shouldPlay, item.id, isYouTube]);
 
   useEffect(() => {
-    if (!preload) {
-      return;
-    }
+    if (!preload || isYouTube) return;
 
     const link = document.createElement("link");
     link.rel = "preload";
@@ -60,7 +79,7 @@ export function FeedVideoCard({
     return () => {
       link.remove();
     };
-  }, [item.videoUrl, preload]);
+  }, [item.videoUrl, preload, isYouTube]);
 
   const formatter = useMemo(
     () =>
@@ -73,23 +92,27 @@ export function FeedVideoCard({
 
   return (
     <article ref={inViewRef} className="relative h-full w-full overflow-hidden bg-black">
-      <MediaPlayer
-        ref={playerRef}
-        src={item.videoUrl}
-        autoplay={shouldPlay}
-        muted
-        loop
-        playsinline
-        className="pointer-events-none absolute inset-0 h-full w-full bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-      >
-        <MediaOutlet>
-          <MediaPoster
-            src={item.posterUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        </MediaOutlet>
-      </MediaPlayer>
+      {isYouTube ? (
+        <YouTubePlayer url={item.videoUrl} active={shouldPlay} />
+      ) : (
+        <MediaPlayer
+          ref={playerRef}
+          src={item.videoUrl}
+          autoplay={shouldPlay}
+          muted
+          loop
+          playsinline
+          className="pointer-events-none absolute inset-0 h-full w-full bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+        >
+          <MediaOutlet>
+            <MediaPoster
+              src={item.posterUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </MediaOutlet>
+        </MediaPlayer>
+      )}
 
       <div
         className={cn(

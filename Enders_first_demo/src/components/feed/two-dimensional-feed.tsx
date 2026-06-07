@@ -437,8 +437,28 @@ export function TwoDimensionalFeed() {
           </SwiperSlide>
         ) : null}
       </Swiper>
-      <div className="pointer-events-none absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-30 rounded-full bg-black/55 px-3 py-2 text-xs font-semibold text-white/82 backdrop-blur">
-        {scaleLevel.percent} - {scaleLevel.label}
+      <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-30 flex items-center gap-2">
+        <div className="pointer-events-none rounded-full bg-black/55 px-3 py-2 text-xs font-semibold text-white/82 backdrop-blur">
+          {scaleLevel.percent} - {scaleLevel.label}
+        </div>
+        <div className="hidden items-center gap-1 sm:flex">
+          <button
+            onClick={() => stepScale("in")}
+            disabled={scaleIndex === 0}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-base font-semibold text-white backdrop-blur transition-opacity disabled:opacity-30"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            onClick={() => stepScale("out")}
+            disabled={scaleIndex === SCALE_LEVELS.length - 1}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-base font-semibold text-white backdrop-blur transition-opacity disabled:opacity-30"
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+        </div>
       </div>
     </main>
   );

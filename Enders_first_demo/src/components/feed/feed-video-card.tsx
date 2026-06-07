@@ -20,20 +20,37 @@ function isYouTubeEmbed(url: string) {
   return url.includes("youtube.com/embed/");
 }
 
-function YouTubePlayer({ url, active }: { url: string; active: boolean }) {
+function YouTubePlayer({
+  url,
+  posterUrl,
+  active,
+}: {
+  url: string;
+  posterUrl: string;
+  active: boolean;
+}) {
   const videoId = url.split("/embed/")[1]?.split("?")[0] ?? "";
   const src = active
     ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${videoId}`
-    : `https://www.youtube.com/embed/${videoId}`;
+    : `https://www.youtube.com/embed/${videoId}?controls=0&rel=0`;
 
   return (
-    <iframe
-      key={String(active)}
-      src={src}
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      allow="autoplay; encrypted-media"
-      allowFullScreen
-    />
+    <>
+      {/* Poster shown immediately; iframe fades over it once loaded */}
+      <img
+        src={posterUrl}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <iframe
+        key={String(active)}
+        src={src}
+        className="absolute inset-0 h-full w-full border-0"
+        allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title="video"
+      />
+    </>
   );
 }
 
@@ -48,8 +65,10 @@ export function FeedVideoCard({
     threshold: 0.72,
     rootMargin: "12% 0px",
   });
-  const shouldPlay = active && inView;
   const isYouTube = isYouTubeEmbed(item.videoUrl);
+  // For YouTube iframes, IntersectionObserver is unreliable inside Swiper virtual
+  // slides (3D transform container). Use `active` alone for the autoplay signal.
+  const shouldPlay = isYouTube ? active : active && inView;
 
   useEffect(() => {
     if (isYouTube) return;
@@ -93,7 +112,7 @@ export function FeedVideoCard({
   return (
     <article ref={inViewRef} className="relative h-full w-full overflow-hidden bg-black">
       {isYouTube ? (
-        <YouTubePlayer url={item.videoUrl} active={shouldPlay} />
+        <YouTubePlayer url={item.videoUrl} posterUrl={item.posterUrl} active={shouldPlay} />
       ) : (
         <MediaPlayer
           ref={playerRef}

@@ -23,9 +23,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
       process.env.NODE_ENV === "development" &&
       process.env.NEXT_PUBLIC_MSW !== "off"
     ) {
-      void import("@/mocks/browser").then(({ worker }) =>
-        worker.start({ onUnhandledRequest: "bypass" }),
-      );
+      void import("@/mocks/browser")
+        .then(({ worker }) => worker.start({ onUnhandledRequest: "bypass" }))
+        .catch(() => undefined);
     }
   }, []);
 

@@ -45,7 +45,7 @@ function YouTubePlayer({
       <iframe
         key={String(active)}
         src={src}
-        className="absolute inset-0 h-full w-full border-0"
+        className="pointer-events-none absolute inset-0 h-full w-full border-0"
         allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
         title="video"

@@ -11,7 +11,7 @@ export const clusterListQuery = infiniteQueryOptions({
   queryFn: ({ pageParam }) => fetchClusters(Number(pageParam ?? 0)),
   initialPageParam: 0,
   getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-  staleTime: 60_000,
+  staleTime: Infinity,
 });
 
 export function clusterItemsQuery(clusterId: string) {
@@ -20,7 +20,7 @@ export function clusterItemsQuery(clusterId: string) {
     queryFn: ({ pageParam }) => fetchClusterItems(clusterId, Number(pageParam ?? 0)),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: 60_000,
+    staleTime: Infinity,
     enabled: Boolean(clusterId),
   });
 }
@@ -29,7 +29,7 @@ export function firstClusterItemsQuery(clusterId: string) {
   return queryOptions({
     queryKey: ["feed", "cluster", clusterId, "items", "first"],
     queryFn: () => fetchClusterItems(clusterId, 0),
-    staleTime: 60_000,
+    staleTime: Infinity,
     enabled: Boolean(clusterId),
   });
 }

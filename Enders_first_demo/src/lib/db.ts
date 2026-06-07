@@ -2,13 +2,13 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
+// Supabase session pooler uses a self-signed cert chain that pg v8 rejects.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function createPrismaClient() {
-  const pool = new Pool({
-    connectionString: process.env.POSTGRES_PRISMA_URL,
-    ssl: { rejectUnauthorized: false },
-  });
+  const pool = new Pool({ connectionString: process.env.POSTGRES_PRISMA_URL });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter, log: ["error"] });
 }

@@ -119,7 +119,7 @@ export function ClusterSlide({
       ) : (
         <Swiper
           modules={[A11y]}
-          className="horizontal-feed-swiper h-full w-full"
+          className="horizontal-feed-swiper h-full w-full bg-white"
           direction="horizontal"
           nested
           loop
@@ -130,6 +130,7 @@ export function ClusterSlide({
           touchStartPreventDefault={false}
           passiveListeners={false}
           slidesPerView={scaleLevel.slidesPerView}
+          spaceBetween={10}
           centeredSlides
           centeredSlidesBounds={false}
           initialSlide={activeX}

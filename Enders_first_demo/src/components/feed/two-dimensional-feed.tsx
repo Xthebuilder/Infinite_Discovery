@@ -375,7 +375,7 @@ export function TwoDimensionalFeed() {
 
       <Swiper
         modules={[A11y, Virtual]}
-        className="vertical-feed-swiper h-full w-full"
+        className="vertical-feed-swiper h-full w-full bg-white"
         direction="vertical"
         virtual
         allowTouchMove
@@ -385,6 +385,7 @@ export function TwoDimensionalFeed() {
         touchStartPreventDefault={false}
         passiveListeners={false}
         slidesPerView={scaleLevel.slidesPerView}
+        spaceBetween={10}
         centeredSlides
         centeredSlidesBounds={false}
         initialSlide={activeY}

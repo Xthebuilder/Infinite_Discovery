@@ -1,13 +1,16 @@
 "use client";
 
 import { MediaOutlet, MediaPlayer, MediaPoster } from "@vidstack/react";
-import { Heart, MessageCircle, Send, Volume2 } from "lucide-react";
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { Heart, MessageCircle, Send, Volume2, Tag } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useInView } from "react-intersection-observer";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import type { FeedItem } from "@/lib/feed/schema";
 import { cn } from "@/lib/utils";
+import { useFeedNavigationStore } from "@/lib/feed/store";
+import { EXTRA_METADATA } from "@/lib/feed/extra-metadata";
 
 type FeedVideoCardProps = {
   item: FeedItem;
@@ -62,14 +65,34 @@ export function FeedVideoCard({
   compact = false,
 }: FeedVideoCardProps) {
   const playerRef = useRef<HTMLElement | null>(null);
+  const addInterest = useFeedNavigationStore(s => s.addInterest);
+  const metadata = EXTRA_METADATA[item.id] || { tags: ["general"] };
+
   const { ref: inViewRef, inView } = useInView({
     threshold: 0.72,
     rootMargin: "12% 0px",
   });
+
+  useEffect(() => {
+    if (!active) return;
+    
+    const timer = setTimeout(() => {
+      console.log(
+        `%c ✨ SYSTEM: USER INTENT DETECTED [#${metadata.tags.join(" #")}] %c (Stayed > 3s on ${item.id})`,
+        "background: #2563eb; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;",
+        "color: #2563eb; font-weight: normal;"
+      );
+      addInterest(metadata.tags, 1);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [active, item.id, metadata.tags, addInterest]);
+
   const isYouTube = isYouTubeEmbed(item.videoUrl);
   // For YouTube iframes, IntersectionObserver is unreliable inside Swiper virtual
   // slides (3D transform container). Use `active` alone for the autoplay signal.
-  const shouldPlay = isYouTube ? active : active && inView;
+  // ALSO: In compact (Deep Dive) mode, always assume inView to bypass observer issues.
+  const shouldPlay = isYouTube ? active : active && (inView || compact);
 
   useEffect(() => {
     if (isYouTube) return;
@@ -111,7 +134,8 @@ export function FeedVideoCard({
   );
 
   return (
-    <article ref={inViewRef} className="relative h-full w-full overflow-hidden bg-black">
+    <motion.div layoutId={`video-${item.id}`} className="h-full w-full bg-black">
+      <article ref={inViewRef} className="relative h-full w-full overflow-hidden bg-black">
       {isYouTube ? (
         <YouTubePlayer url={item.videoUrl} posterUrl={item.posterUrl} active={shouldPlay} />
       ) : (
@@ -205,6 +229,7 @@ export function FeedVideoCard({
         </div>
       </div>
     </article>
+    </motion.div>
   );
 }
 

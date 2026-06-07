@@ -8,6 +8,7 @@ import { A11y } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 
+import { motion } from "framer-motion";
 import { FeedVideoCard } from "@/components/feed/feed-video-card";
 import { Button } from "@/components/ui/button";
 import { clusterItemsQuery } from "@/lib/feed/queries";
@@ -130,7 +131,7 @@ export function ClusterSlide({
           touchStartPreventDefault={false}
           passiveListeners={false}
           slidesPerView={scaleLevel.slidesPerView}
-          spaceBetween={10}
+          spaceBetween={2}
           centeredSlides
           centeredSlidesBounds={false}
           initialSlide={activeX}
@@ -146,12 +147,23 @@ export function ClusterSlide({
         >
           {items.map((item, x) => (
             <SwiperSlide key={item.id} className="h-full w-full">
-              <FeedVideoCard
-                item={item}
-                active={isActiveCluster && activeX === x}
-                preload={isActiveCluster && Math.abs(activeX - x) === 1}
-                compact={scaleLevel.slidesPerView >= 3}
-              />
+              <motion.div 
+                layout
+                initial={false}
+                className="h-full w-full"
+                transition={{
+                  type: "spring",
+                  stiffness: 260,
+                  damping: 25
+                }}
+              >
+                <FeedVideoCard
+                  item={item}
+                  active={isActiveCluster && activeX === x}
+                  preload={isActiveCluster && Math.abs(activeX - x) === 1}
+                  compact={scaleLevel.slidesPerView >= 3}
+                />
+              </motion.div>
             </SwiperSlide>
           ))}
         </Swiper>

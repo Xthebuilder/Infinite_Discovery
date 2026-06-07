@@ -19,7 +19,10 @@ import type { Swiper as SwiperInstance } from "swiper";
 import "swiper/css";
 import "swiper/css/virtual";
 
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { ClusterSlide } from "@/components/feed/cluster-slide";
+import { DeepDiveGrid } from "./deep-dive-grid";
+import { getRelatedItems } from "@/lib/feed/utils";
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
 import { useAnalytics } from "@/lib/analytics/analytics";
 import { clusterListQuery, prefetchNeighborhood } from "@/lib/feed/queries";
@@ -83,6 +86,10 @@ export function TwoDimensionalFeed() {
   const [activeX, setActiveX] = useState(0);
   const [scaleIndex, setScaleIndex] = useState(0);
   const scaleLevel = SCALE_LEVELS[scaleIndex];
+  
+  const isDeepDive = useFeedNavigationStore((s) => s.isDeepDive);
+  const deepDiveAnchorItem = useFeedNavigationStore((s) => s.deepDiveAnchorItem);
+  const setDeepDive = useFeedNavigationStore((s) => s.setDeepDive);
   const setLocation = useFeedNavigationStore((state) => state.setLocation);
   const requestedClusterId = searchParams.get("cluster");
   const requestedItemId = searchParams.get("item");
@@ -194,14 +201,38 @@ export function TwoDimensionalFeed() {
   );
 
   const stepScale = useCallback((direction: "in" | "out") => {
-    setScaleIndex((current) => {
-      if (direction === "out") {
-        return Math.min(current + 1, SCALE_LEVELS.length - 1);
+    if (direction === "out") {
+      if (isDeepDive) {
+        setDeepDive(false);
+        setScaleIndex(0);
+        return;
       }
+      setScaleIndex((current) => Math.min(current + 1, SCALE_LEVELS.length - 1));
+    } else {
+      // direction === "in"
+      if (scaleIndex === 0) {
+        console.log(
+          "%c 🚀 SYSTEM: TRIGGERING DEEP DIVE (3x3 RELATED GRID) ",
+          "background: #1d4ed8; color: white; font-weight: bold; font-size: 14px; padding: 6px 12px; border-radius: 8px;"
+        );
+        const activeClusterId = clusters[activeY]?.id;
+        if (activeClusterId) {
+          const itemsData: any = queryClient.getQueryData(["feed", "cluster", activeClusterId, "items"]);
+          // Flatten all pages to find the item by global index
+          const allItems = itemsData?.pages?.flatMap((p: any) => p.items) || [];
+          const currentItem = allItems[activeX];
 
-      return Math.max(current - 1, 0);
-    });
-  }, []);
+          if (currentItem) {
+            setDeepDive(true, currentItem);
+          } else {
+            console.error("❌ System: Item not found at index", activeX, "in", allItems.length, "items");
+          }
+        }
+      } else {
+        setScaleIndex((current) => Math.max(current - 1, 0));
+      }
+    }
+  }, [clusters, activeY, activeX, isDeepDive, scaleIndex, setDeepDive, queryClient]);
 
   const handleTouchStart = useCallback((event: TouchEvent<HTMLElement>) => {
     if (event.touches.length === 2 && !pinchLockedUntilTouchResetRef.current) {
@@ -369,13 +400,22 @@ export function TwoDimensionalFeed() {
       onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
+      <LayoutGroup>
       <div ref={virtualRef} className="sr-only" aria-hidden="true">
         {clusterVirtualizer.getVirtualItems().length} virtual cluster slots prepared
       </div>
 
-      <Swiper
-        modules={[A11y, Virtual]}
-        className="vertical-feed-swiper h-full w-full bg-white"
+      <motion.div 
+        className="h-full w-full"
+        initial={false}
+        animate={{
+          scale: 1,
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
+        <Swiper
+          modules={[A11y, Virtual]}
+          className="vertical-feed-swiper h-full w-full bg-white"
         direction="vertical"
         virtual
         allowTouchMove
@@ -385,7 +425,7 @@ export function TwoDimensionalFeed() {
         touchStartPreventDefault={false}
         passiveListeners={false}
         slidesPerView={scaleLevel.slidesPerView}
-        spaceBetween={10}
+        spaceBetween={2}
         centeredSlides
         centeredSlidesBounds={false}
         initialSlide={activeY}
@@ -438,29 +478,51 @@ export function TwoDimensionalFeed() {
           </SwiperSlide>
         ) : null}
       </Swiper>
-      <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-30 flex items-center gap-2">
+      </motion.div>
+      <div className="absolute bottom-[max(6rem,env(safe-area-inset-bottom)+5rem))] left-4 z-30 flex flex-col items-center gap-2">
         <div className="pointer-events-none rounded-full bg-black/55 px-3 py-2 text-xs font-semibold text-white/82 backdrop-blur">
           {scaleLevel.percent} - {scaleLevel.label}
         </div>
-        <div className="hidden items-center gap-1 sm:flex">
+        <div className="flex flex-col items-center gap-2">
           <button
             onClick={() => stepScale("in")}
-            disabled={scaleIndex === 0}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-base font-semibold text-white backdrop-blur transition-opacity disabled:opacity-30"
+            disabled={isDeepDive && scaleIndex === 0}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/80 text-xl font-bold text-white shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-30"
             aria-label="Zoom in"
           >
             +
           </button>
           <button
             onClick={() => stepScale("out")}
-            disabled={scaleIndex === SCALE_LEVELS.length - 1}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-base font-semibold text-white backdrop-blur transition-opacity disabled:opacity-30"
+            disabled={!isDeepDive && scaleIndex === SCALE_LEVELS.length - 1}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-xl font-bold text-white shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-30"
             aria-label="Zoom out"
           >
             −
           </button>
         </div>
       </div>
+      {isDeepDive && deepDiveAnchorItem && (
+        <DeepDiveGrid 
+          anchorItem={deepDiveAnchorItem}
+          relatedItems={(() => {
+            const allItems = clusters.flatMap(c => {
+              const data: any = queryClient.getQueryData(["feed", "cluster", c.id, "items"]);
+              return data?.pages?.flatMap((p: any) => p.items) || [];
+            });
+            const related = getRelatedItems(deepDiveAnchorItem.id, allItems);
+            console.log("🔍 Debug DeepDive:", {
+              anchorId: deepDiveAnchorItem.id,
+              totalAvailable: allItems.length,
+              foundRelated: related.length,
+              relatedIds: related.map(r => r.id)
+            });
+            return related;
+          })()}
+          onClose={() => setDeepDive(false)}
+        />
+      )}
+      </LayoutGroup>
     </main>
   );
 }

@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import { A11y, Virtual } from "swiper/modules";
+import { A11y } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 
@@ -145,11 +145,11 @@ export function ClusterSlide({
         </div>
       ) : (
         <Swiper
-          modules={[A11y, Virtual]}
+          modules={[A11y]}
           className="horizontal-feed-swiper h-full w-full"
           direction="horizontal"
           nested
-          virtual
+          loop
           allowTouchMove
           resistanceRatio={0.72}
           threshold={6}
@@ -179,7 +179,7 @@ export function ClusterSlide({
           }}
         >
           {items.map((item, x) => (
-            <SwiperSlide key={item.id} virtualIndex={x} className="h-full w-full">
+            <SwiperSlide key={item.id} className="h-full w-full">
               <FeedVideoCard
                 item={item}
                 active={isActiveCluster && activeX === x}

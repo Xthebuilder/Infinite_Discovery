@@ -44,7 +44,7 @@ const REGIONS: { id: string; title: string; query: string; score: number }[] = [
   { id: "region-relationships", title: "Relationships", query: "relationship advice dating short",    score: 0.76 },
 ];
 
-const VIDEOS_PER_REGION = 10;
+const VIDEOS_PER_REGION = 50;
 const API_KEY = process.env.YOUTUBE_API_KEY;
 
 if (!API_KEY) {

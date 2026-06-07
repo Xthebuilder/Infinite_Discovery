@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   description: "A two-dimensional short video discovery feed.",
 };
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,6 +30,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      {/* Pre-open TCP connections to YouTube before any iframe renders */}
+      <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+      <link rel="preconnect" href="https://i.ytimg.com" />
+      <link rel="dns-prefetch" href="https://www.youtube-nocookie.com" />
+      <link rel="dns-prefetch" href="https://i.ytimg.com" />
       <body className="flex min-h-full flex-col">
         <AppProviders>{children}</AppProviders>
       </body>

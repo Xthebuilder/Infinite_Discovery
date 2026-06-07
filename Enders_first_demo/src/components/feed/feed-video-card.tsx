@@ -30,26 +30,27 @@ function YouTubePlayer({
   active: boolean;
 }) {
   const videoId = url.split("/embed/")[1]?.split("?")[0] ?? "";
-  const src = active
-    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${videoId}`
-    : `https://www.youtube.com/embed/${videoId}?controls=0&rel=0`;
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${videoId}`;
 
   return (
     <>
-      {/* Poster shown immediately; iframe fades over it once loaded */}
+      {/* Always show poster — instant, no network cost */}
       <img
         src={posterUrl}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
       />
-      <iframe
-        key={String(active)}
-        src={src}
-        className="pointer-events-none absolute inset-0 h-full w-full border-0"
-        allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        title="video"
-      />
+      {/* Only mount the iframe when this card is active — one iframe loads
+          at a time instead of every visible card loading YouTube in parallel */}
+      {active && (
+        <iframe
+          src={src}
+          className="pointer-events-none absolute inset-0 h-full w-full border-0"
+          allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="video"
+        />
+      )}
     </>
   );
 }

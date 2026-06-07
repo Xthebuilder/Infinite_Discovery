@@ -60,78 +60,51 @@ export function ClusterSlide({
   const virtualItems = itemVirtualizer.getVirtualItems();
 
   useEffect(() => {
-    if (!isActiveCluster) {
-      return;
-    }
-
+    if (!isActiveCluster) return;
     onSwiperReady?.(swiperRef.current);
-
-    return () => {
-      onSwiperReady?.(null);
-    };
+    return () => { onSwiperReady?.(null); };
   }, [isActiveCluster, onSwiperReady]);
 
+  // Jump to a deep-linked item by id.
   useEffect(() => {
-    if (!isActiveCluster || !requestedItemId || !items.length) {
-      return;
-    }
-
+    if (!isActiveCluster || !requestedItemId || !items.length) return;
     const requestedIndex = items.findIndex((item) => item.id === requestedItemId);
-
-    if (requestedIndex >= 0 && requestedIndex !== swiperRef.current?.activeIndex) {
-      swiperRef.current?.slideTo(requestedIndex, 0);
+    if (requestedIndex >= 0 && requestedIndex !== swiperRef.current?.realIndex) {
+      swiperRef.current?.slideToLoop(requestedIndex, 0);
     }
   }, [isActiveCluster, items, requestedItemId]);
 
+  // Sync Swiper position when activeX is changed programmatically (e.g. keyboard nav).
   useEffect(() => {
-    if (!isActiveCluster || !items.length) {
-      return;
-    }
-
-    const boundedX = Math.min(activeX, items.length - 1);
-
-    if (boundedX >= 0 && boundedX !== swiperRef.current?.activeIndex) {
-      swiperRef.current?.slideTo(boundedX, 0);
+    if (!isActiveCluster || !items.length) return;
+    const bounded = Math.min(activeX, items.length - 1);
+    if (bounded >= 0 && bounded !== swiperRef.current?.realIndex) {
+      swiperRef.current?.slideToLoop(bounded, 0);
     }
   }, [activeX, isActiveCluster, items.length]);
 
+  // Re-sync after scale change (slidesPerView changes → Swiper needs update).
   useEffect(() => {
     swiperRef.current?.update();
-
-    if (!isActiveCluster || !items.length) {
-      return;
-    }
-
-    const boundedX = Math.min(activeX, items.length - 1);
-    swiperRef.current?.slideTo(boundedX, 0);
-  }, [activeX, isActiveCluster, items.length, scaleLevel.slidesPerView]);
+    if (!isActiveCluster || !items.length) return;
+    swiperRef.current?.slideToLoop(Math.min(activeX, items.length - 1), 0);
+  }, [scaleLevel.slidesPerView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!isActiveCluster || !items[activeX]) {
-      return;
+    if (!isActiveCluster || !items[activeX]) return;
+    if (hasNextPage && activeX >= items.length - 4 && !isFetchingNextPage) {
+      void fetchNextPage();
     }
-
+    // Prefetch next item into query cache for instant card render.
     const nextItem = items[activeX + 1];
     if (nextItem) {
       void queryClient.prefetchQuery({
         queryKey: ["feed", "video", nextItem.id],
         queryFn: () => Promise.resolve(nextItem),
-        staleTime: 60_000,
+        staleTime: Infinity,
       });
     }
-
-    if (hasNextPage && activeX >= items.length - 4 && !isFetchingNextPage) {
-      void fetchNextPage();
-    }
-  }, [
-    activeX,
-    fetchNextPage,
-    hasNextPage,
-    isActiveCluster,
-    isFetchingNextPage,
-    items,
-    queryClient,
-  ]);
+  }, [activeX, fetchNextPage, hasNextPage, isActiveCluster, isFetchingNextPage, items, queryClient]);
 
   return (
     <section className="relative h-full w-full bg-black" aria-label={cluster.title}>
@@ -162,20 +135,12 @@ export function ClusterSlide({
           initialSlide={activeX}
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
-            if (isActiveCluster) {
-              onSwiperReady?.(swiper);
-            }
+            if (isActiveCluster) onSwiperReady?.(swiper);
           }}
           onSlideChange={(swiper) => {
-            const item = items[swiper.activeIndex];
-            if (item) {
-              onItemChange(swiper.activeIndex, item.id);
-            }
-          }}
-          onReachEnd={() => {
-            if (hasNextPage && !isFetchingNextPage) {
-              void fetchNextPage();
-            }
+            // loop mode: use realIndex (0…n-1), not activeIndex (includes clones)
+            const item = items[swiper.realIndex];
+            if (item) onItemChange(swiper.realIndex, item.id);
           }}
         >
           {items.map((item, x) => (
@@ -183,18 +148,11 @@ export function ClusterSlide({
               <FeedVideoCard
                 item={item}
                 active={isActiveCluster && activeX === x}
-                preload={isActiveCluster && (activeX === x + 1 || activeX + 1 === x)}
+                preload={isActiveCluster && Math.abs(activeX - x) === 1}
                 compact={scaleLevel.slidesPerView >= 3}
               />
             </SwiperSlide>
           ))}
-          {isFetchingNextPage ? (
-            <SwiperSlide virtualIndex={items.length} className="h-full w-full">
-              <div className="flex h-full items-center justify-center bg-black text-white">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            </SwiperSlide>
-          ) : null}
         </Swiper>
       )}
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { FeedVideoCard } from "./feed-video-card";
 import type { FeedItem } from "@/lib/feed/schema";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,14 @@ type DeepDiveGridProps = {
 };
 
 export function DeepDiveGrid({ anchorItem, relatedItems, onClose }: DeepDiveGridProps) {
+  const [isFullyMounted, setIsFullyMounted] = useState(false);
+
+  useEffect(() => {
+    // Give the layout animation 300ms to settle before enabling all players
+    const timer = setTimeout(() => setIsFullyMounted(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Fill exactly 9 positions to ensure the anchor is always at [1,1] (index 4)
   const displayItems: (FeedItem | null)[] = new Array(9).fill(null);
   
@@ -73,7 +82,7 @@ export function DeepDiveGrid({ anchorItem, relatedItems, onClose }: DeepDiveGrid
             >
               <FeedVideoCard 
                 item={item} 
-                active={isAnchor} // ONLY auto-play the center one to be safe
+                active={isAnchor || isFullyMounted} // Center plays immediately, others wait 300ms
                 compact={true} 
               />
               {isAnchor && (

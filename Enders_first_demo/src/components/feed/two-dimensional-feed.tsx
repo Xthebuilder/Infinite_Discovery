@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ import type { Swiper as SwiperInstance } from "swiper";
 import "swiper/css";
 import "swiper/css/virtual";
 
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { motion, LayoutGroup } from "framer-motion";
 import { ClusterSlide } from "@/components/feed/cluster-slide";
 import { DeepDiveGrid } from "./deep-dive-grid";
 import { getRelatedItems } from "@/lib/feed/utils";
@@ -82,8 +83,8 @@ export function TwoDimensionalFeed() {
   const lastScaleStepAtRef = useRef(0);
   const lastWheelNavigationRef = useRef(0);
   const hydratedFromInitialUrlRef = useRef(false);
-  const [activeY, setActiveY] = useState(0);
-  const [activeX, setActiveX] = useState(0);
+  const [activeY, setActiveY] = useState(5);
+  const [activeX, setActiveX] = useState(5);
   const [scaleIndex, setScaleIndex] = useState(0);
   const scaleLevel = SCALE_LEVELS[scaleIndex];
   
@@ -105,7 +106,7 @@ export function TwoDimensionalFeed() {
     count: 1200,
     getScrollElement: () => virtualRef.current,
     estimateSize: () => globalThis.innerHeight || 844,
-    overscan: 4,
+    overscan: 12,
   });
 
   useEffect(() => {
@@ -411,65 +412,71 @@ export function TwoDimensionalFeed() {
         animate={{
           scale: 1,
         }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 450, 
+          damping: 40,
+          mass: 0.8
+        }}
       >
         <Swiper
           modules={[A11y, Virtual]}
           className="vertical-feed-swiper h-full w-full bg-white"
-        direction="vertical"
-        virtual
-        allowTouchMove
-        resistanceRatio={0.72}
-        threshold={6}
-        touchAngle={35}
-        touchStartPreventDefault={false}
-        passiveListeners={false}
-        slidesPerView={scaleLevel.slidesPerView}
-        spaceBetween={2}
-        centeredSlides
-        centeredSlidesBounds={false}
-        initialSlide={activeY}
-        onSwiper={(swiper) => {
-          verticalSwiperRef.current = swiper;
-        }}
-        onSlideChange={(swiper) => {
-          const y = swiper.activeIndex;
-          const cluster = clusters[y];
-          setActiveY(y);
+          direction="vertical"
+          virtual
+          allowTouchMove
+          resistanceRatio={0.72}
+          threshold={6}
+          touchAngle={35}
+          touchStartPreventDefault={false}
+          passiveListeners={false}
+          slidesPerView={scaleLevel.slidesPerView}
+          spaceBetween={2}
+          centeredSlides
+          centeredSlidesBounds={false}
+          initialSlide={activeY}
+          onSwiper={(swiper) => {
+            verticalSwiperRef.current = swiper;
+          }}
+          onSlideChange={(swiper) => {
+            const y = swiper.activeIndex;
+            const cluster = clusters[y];
+            setActiveY(y);
 
-          if (cluster) {
-            setLocation({
-              x: activeX,
-              y,
-              clusterId: cluster.id,
-              itemId: requestedItemId ?? "",
-            });
-          }
-        }}
-        onReachEnd={() => {
-          if (hasNextPage && !isFetchingNextPage) {
-            void fetchNextPage();
-          }
-        }}
-      >
-        {clusters.map((cluster, y) => (
-          <SwiperSlide key={cluster.id} virtualIndex={y} className="h-full w-full">
-            <ClusterSlide
-              cluster={cluster}
-              y={y}
-              activeY={activeY}
-              activeX={activeX}
-              scaleLevel={scaleLevel}
-              requestedItemId={
-                cluster.id === requestedClusterId ? requestedItemId : undefined
-              }
-              onItemChange={(x, itemId) => commitLocation(x, y, itemId)}
-              onSwiperReady={(swiper) => {
-                horizontalSwiperRef.current = swiper;
-              }}
-            />
-          </SwiperSlide>
-        ))}
+            if (cluster) {
+              setLocation({
+                x: activeX,
+                y,
+                clusterId: cluster.id,
+                itemId: requestedItemId ?? "",
+              });
+            }
+          }}
+          onReachEnd={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              void fetchNextPage();
+            }
+          }}
+        >
+          {clusters.map((cluster, y) => (
+            <SwiperSlide key={cluster.id} virtualIndex={y} className="h-full w-full">
+              <ClusterSlide
+                cluster={cluster}
+                y={y}
+                activeY={activeY}
+                activeX={activeX}
+                scaleLevel={scaleLevel}
+                isPaused={isDeepDive}
+                requestedItemId={
+                  cluster.id === requestedClusterId ? requestedItemId : undefined
+                }
+                onItemChange={(x, itemId) => commitLocation(x, y, itemId)}
+                onSwiperReady={(swiper) => {
+                  horizontalSwiperRef.current = swiper;
+                }}
+              />
+            </SwiperSlide>
+          ))}
         {isFetchingNextPage ? (
           <SwiperSlide virtualIndex={clusters.length} className="h-full w-full">
             <div className="flex h-full items-center justify-center bg-black text-white">
@@ -480,7 +487,7 @@ export function TwoDimensionalFeed() {
       </Swiper>
       </motion.div>
       <div className="absolute bottom-[max(6rem,env(safe-area-inset-bottom)+5rem))] left-4 z-30 flex flex-col items-center gap-2">
-        <div className="pointer-events-none rounded-full bg-black/55 px-3 py-2 text-xs font-semibold text-white/82 backdrop-blur">
+        <div className="pointer-events-none hidden rounded-full bg-black/55 px-3 py-2 text-xs font-semibold text-white/82 backdrop-blur">
           {scaleLevel.percent} - {scaleLevel.label}
         </div>
         <div className="flex flex-col items-center gap-2">
@@ -507,7 +514,9 @@ export function TwoDimensionalFeed() {
           anchorItem={deepDiveAnchorItem}
           relatedItems={(() => {
             const allItems = clusters.flatMap(c => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const data: any = queryClient.getQueryData(["feed", "cluster", c.id, "items"]);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               return data?.pages?.flatMap((p: any) => p.items) || [];
             });
             const related = getRelatedItems(deepDiveAnchorItem.id, allItems);

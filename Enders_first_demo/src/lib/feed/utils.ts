@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EXTRA_METADATA } from "./extra-metadata";
+import type { FeedItem } from "./schema";
 
 /**
  * Finds 8 related items for a given anchor item based on tag overlap.
  * This is a "cheat" implementation for the demo.
  */
-export function getRelatedItems(anchorId: string, allLoadedItems: any[]): any[] {
+export function getRelatedItems(anchorId: string, allLoadedItems: FeedItem[]): FeedItem[] {
   const anchorMetadata = EXTRA_METADATA[anchorId];
   if (!anchorMetadata) {
     console.warn("⚠️ getRelatedItems: No metadata found for anchor", anchorId);
@@ -17,7 +19,7 @@ export function getRelatedItems(anchorId: string, allLoadedItems: any[]): any[] 
   // Score all items based on tag overlap
   const scored = allLoadedItems
     .filter(item => item.id !== anchorId)
-    .map(item => {
+    .map((item: FeedItem) => {
       const itemMetadata = EXTRA_METADATA[item.id];
       let score = 0;
       if (itemMetadata) {

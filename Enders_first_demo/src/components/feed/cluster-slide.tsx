@@ -22,6 +22,7 @@ type ClusterSlideProps = {
   activeX: number;
   scaleLevel: FeedScaleLevel;
   requestedItemId?: string | null;
+  isPaused?: boolean;
   onItemChange: (x: number, itemId: string) => void;
   onSwiperReady?: (swiper: SwiperInstance | null) => void;
 };
@@ -33,6 +34,7 @@ export function ClusterSlide({
   activeX,
   scaleLevel,
   requestedItemId,
+  isPaused = false,
   onItemChange,
   onSwiperReady,
 }: ClusterSlideProps) {
@@ -56,7 +58,7 @@ export function ClusterSlide({
     count: cluster.itemCount,
     getScrollElement: () => virtualRef.current,
     estimateSize: () => globalThis.innerWidth || 390,
-    overscan: 3,
+    overscan: 10,
   });
   const virtualItems = itemVirtualizer.getVirtualItems();
 
@@ -150,17 +152,18 @@ export function ClusterSlide({
               <motion.div 
                 layout
                 initial={false}
-                className="h-full w-full"
+                className="h-full w-full will-change-transform transform-gpu"
                 transition={{
                   type: "spring",
-                  stiffness: 260,
-                  damping: 25
+                  stiffness: 400,
+                  damping: 35,
+                  mass: 0.8
                 }}
               >
                 <FeedVideoCard
                   item={item}
-                  active={isActiveCluster && activeX === x}
-                  preload={isActiveCluster && Math.abs(activeX - x) === 1}
+                  active={!isPaused && isActiveCluster && activeX === x}
+                  preload={!isPaused && isActiveCluster && Math.abs(activeX - x) === 1}
                   compact={scaleLevel.slidesPerView >= 3}
                 />
               </motion.div>
@@ -170,7 +173,7 @@ export function ClusterSlide({
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white">
-        <div>
+        <div className="hidden">
           <p className="text-xs uppercase tracking-[0.22em] text-white/55">
             y:{y} / x:{activeX}
           </p>

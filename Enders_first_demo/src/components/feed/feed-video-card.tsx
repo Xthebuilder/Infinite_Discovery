@@ -2,12 +2,15 @@
 
 import { MediaOutlet, MediaPlayer, MediaPoster } from "@vidstack/react";
 import { Heart, MessageCircle, Send, Volume2 } from "lucide-react";
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, memo } from "react";
 import { useInView } from "react-intersection-observer";
+import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import type { FeedItem } from "@/lib/feed/schema";
 import { cn } from "@/lib/utils";
+import { useFeedNavigationStore } from "@/lib/feed/store";
+import { EXTRA_METADATA } from "@/lib/feed/extra-metadata";
 
 type FeedVideoCardProps = {
   item: FeedItem;
@@ -43,33 +46,62 @@ function YouTubePlayer({
       {/* Only mount the iframe when this card is active — one iframe loads
           at a time instead of every visible card loading YouTube in parallel */}
       {active && (
-        <iframe
-          src={src}
-          className="pointer-events-none absolute inset-0 h-full w-full border-0"
-          allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          title="video"
-        />
+        <div className="absolute inset-0 overflow-hidden">
+          <iframe
+            src={src}
+            className="absolute inset-x-0 border-0"
+            style={{ 
+              top: "-15%", 
+              height: "130%", 
+              width: "100%" 
+            }}
+            allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="video"
+          />
+          {/* Prevent any interaction with YouTube controls */}
+          <div className="absolute inset-0 z-10 pointer-events-auto bg-transparent" />
+        </div>
       )}
     </>
   );
 }
 
-export function FeedVideoCard({
+export const FeedVideoCard = memo(function FeedVideoCard({
   item,
   active,
   preload,
   compact = false,
 }: FeedVideoCardProps) {
   const playerRef = useRef<HTMLElement | null>(null);
+  const addInterest = useFeedNavigationStore(s => s.addInterest);
+  const metadata = EXTRA_METADATA[item.id] || { tags: ["general"] };
+
   const { ref: inViewRef, inView } = useInView({
     threshold: 0.72,
     rootMargin: "12% 0px",
   });
+
+  useEffect(() => {
+    if (!active) return;
+    
+    const timer = setTimeout(() => {
+      console.log(
+        `%c ✨ SYSTEM: USER INTENT DETECTED [#${metadata.tags.join(" #")}] %c (Stayed > 3s on ${item.id})`,
+        "background: #2563eb; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px;",
+        "color: #2563eb; font-weight: normal;"
+      );
+      addInterest(metadata.tags, 1);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [active, item.id, metadata.tags, addInterest]);
+
   const isYouTube = isYouTubeEmbed(item.videoUrl);
   // For YouTube iframes, IntersectionObserver is unreliable inside Swiper virtual
   // slides (3D transform container). Use `active` alone for the autoplay signal.
-  const shouldPlay = isYouTube ? active : active && inView;
+  // ALSO: In compact (Deep Dive) mode, always assume inView to bypass observer issues.
+  const shouldPlay = isYouTube ? active : active && (inView || compact);
 
   useEffect(() => {
     if (isYouTube) return;
@@ -111,7 +143,17 @@ export function FeedVideoCard({
   );
 
   return (
-    <article ref={inViewRef} className="relative h-full w-full overflow-hidden bg-black">
+    <motion.div 
+      layoutId={`video-${item.id}`} 
+      className="h-full w-full bg-black will-change-transform transform-gpu"
+    >
+      <article 
+        ref={inViewRef} 
+        className={cn(
+          "relative h-full w-full overflow-hidden bg-black backface-hidden",
+          active ? "z-10" : "z-0",
+        )}
+      >
       {isYouTube ? (
         <YouTubePlayer url={item.videoUrl} posterUrl={item.posterUrl} active={shouldPlay} />
       ) : (
@@ -143,7 +185,7 @@ export function FeedVideoCard({
 
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between text-white",
+          "pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden items-end justify-between text-white",
           compact
             ? "gap-2 p-2"
             : "gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6",
@@ -205,8 +247,9 @@ export function FeedVideoCard({
         </div>
       </div>
     </article>
+    </motion.div>
   );
-}
+});
 
 function MetricButton({
   icon,

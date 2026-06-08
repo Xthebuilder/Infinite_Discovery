@@ -21,6 +21,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
+    "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "maverick.js": "0.37.0",
     "msw": "^2.14.6",

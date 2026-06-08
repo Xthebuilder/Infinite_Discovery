@@ -8,6 +8,7 @@ import { A11y } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 
+import { motion } from "framer-motion";
 import { FeedVideoCard } from "@/components/feed/feed-video-card";
 import { Button } from "@/components/ui/button";
 import { clusterItemsQuery } from "@/lib/feed/queries";
@@ -21,6 +22,7 @@ type ClusterSlideProps = {
   activeX: number;
   scaleLevel: FeedScaleLevel;
   requestedItemId?: string | null;
+  isPaused?: boolean;
   onItemChange: (x: number, itemId: string) => void;
   onSwiperReady?: (swiper: SwiperInstance | null) => void;
 };
@@ -32,6 +34,7 @@ export function ClusterSlide({
   activeX,
   scaleLevel,
   requestedItemId,
+  isPaused = false,
   onItemChange,
   onSwiperReady,
 }: ClusterSlideProps) {
@@ -55,7 +58,7 @@ export function ClusterSlide({
     count: cluster.itemCount,
     getScrollElement: () => virtualRef.current,
     estimateSize: () => globalThis.innerWidth || 390,
-    overscan: 3,
+    overscan: 10,
   });
   const virtualItems = itemVirtualizer.getVirtualItems();
 
@@ -119,7 +122,7 @@ export function ClusterSlide({
       ) : (
         <Swiper
           modules={[A11y]}
-          className="horizontal-feed-swiper h-full w-full"
+          className="horizontal-feed-swiper h-full w-full bg-white"
           direction="horizontal"
           nested
           loop
@@ -130,6 +133,7 @@ export function ClusterSlide({
           touchStartPreventDefault={false}
           passiveListeners={false}
           slidesPerView={scaleLevel.slidesPerView}
+          spaceBetween={2}
           centeredSlides
           centeredSlidesBounds={false}
           initialSlide={activeX}
@@ -145,19 +149,31 @@ export function ClusterSlide({
         >
           {items.map((item, x) => (
             <SwiperSlide key={item.id} className="h-full w-full">
-              <FeedVideoCard
-                item={item}
-                active={isActiveCluster && activeX === x}
-                preload={isActiveCluster && Math.abs(activeX - x) === 1}
-                compact={scaleLevel.slidesPerView >= 3}
-              />
+              <motion.div 
+                layout
+                initial={false}
+                className="h-full w-full will-change-transform transform-gpu"
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 35,
+                  mass: 0.8
+                }}
+              >
+                <FeedVideoCard
+                  item={item}
+                  active={!isPaused && isActiveCluster && activeX === x}
+                  preload={!isPaused && isActiveCluster && Math.abs(activeX - x) === 1}
+                  compact={scaleLevel.slidesPerView >= 3}
+                />
+              </motion.div>
             </SwiperSlide>
           ))}
         </Swiper>
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white">
-        <div>
+        <div className="hidden">
           <p className="text-xs uppercase tracking-[0.22em] text-white/55">
             y:{y} / x:{activeX}
           </p>
